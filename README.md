@@ -7,17 +7,42 @@ No more accidental:
 - overwrites with `vault kv put`.
 
 
+## Install
+
+### Download binary
+
+Download the latest release from [GitHub Releases](https://github.com/BlackMetalz/vault-vim/releases/latest):
+
+```bash
+# Linux amd64
+curl -Lo vault-vim https://github.com/BlackMetalz/vault-vim/releases/latest/download/vault-vim-linux-amd64
+chmod +x vault-vim
+sudo mv vault-vim /usr/local/bin/
+
+# macOS Apple Silicon (M1/M2/M3)
+curl -Lo vault-vim https://github.com/BlackMetalz/vault-vim/releases/latest/download/vault-vim-darwin-arm64
+chmod +x vault-vim
+sudo mv vault-vim /usr/local/bin/
+
+# macOS Intel
+curl -Lo vault-vim https://github.com/BlackMetalz/vault-vim/releases/latest/download/vault-vim-darwin-amd64
+chmod +x vault-vim
+sudo mv vault-vim /usr/local/bin/
+```
+
+### Build from source
+
+```bash
+go install github.com/BlackMetalz/vault-vim@latest
+```
+
 ## Quick Start
 
 ```bash
-# Build + run
-make local
-
-# Or manually
-go build -o vault-vim .
+# Set your Vault connection (or use 'vault login' which writes ~/.vault-token)
 export VAULT_ADDR=http://127.0.0.1:8200
 export VAULT_TOKEN=your-token
-./vault-vim
+vault-vim
 ```
 
 ## Local Dev with Docker
