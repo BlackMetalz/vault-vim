@@ -1,0 +1,63 @@
+services:
+  vault:
+    image: hashicorp/vault:1.15
+    container_name: vault-dev
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: "root-token"
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+    cap_add:
+      - IPC_LOCK
+    command: server -dev
+
+  vault-init:
+    image: hashicorp/vault:1.15
+    container_name: vault-init
+    depends_on:
+      - vault
+    environment:
+      VAULT_ADDR: "http://vault:8200"
+      VAULT_TOKEN: "root-token"
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        sleep 2
+        # Enable a second KV v2 mount
+        vault secrets enable -path=team-secrets -version=2 kv
+
+        # Seed test data in secret/
+        vault kv put secret/myapp/prod db_host=prod-db.example.com db_port=5432 db_user=admin db_pass=supersecret123
+        vault kv put secret/myapp/staging db_host=staging-db.example.com db_port=5432 db_user=staging db_pass=stagingpass
+        vault kv put secret/myapp/dev db_host=localhost db_port=5432 db_user=dev db_pass=devpass
+        vault kv put secret/infra/aws aws_access_key=AKIAIOSFODNN7EXAMPLE aws_secret_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY region=us-east-1
+        vault kv put secret/infra/gcp project_id=my-project-123 service_account=sa@my-project.iam.gserviceaccount.com
+
+        # Seed test data in team-secrets/
+        vault kv put team-secrets/backend/api-keys stripe_key=sk_test_abc123 sendgrid_key=SG.test456
+        vault kv put team-secrets/frontend/config api_url=https://api.example.com cdn_url=https://cdn.example.com
+
+        # Create a userpass auth for testing
+        vault auth enable userpass
+        vault write auth/userpass/users/testuser password=testpass policies=default
+
+        # Create a policy that allows access to both mounts
+        vault policy write team-policy - <<EOF
+        path "secret/*" {
+          capabilities = ["create", "read", "update", "delete", "list"]
+        }
+        path "team-secrets/*" {
+          capabilities = ["create", "read", "update", "delete", "list"]
+        }
+        path "sys/mounts" {
+          capabilities = ["read"]
+        }
+        EOF
+
+        vault write auth/userpass/users/testuser policies=team-policy
+
+        echo "=== Vault initialized with test data ==="
+        echo "Root token: root-token"
+        echo "Test user: testuser / testpass"
+        echo "Mounts: secret/, team-secrets/"
