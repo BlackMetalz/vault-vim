@@ -15,10 +15,16 @@ No more accidental:
 Download the latest release from [GitHub Releases](https://github.com/BlackMetalz/vault-vim/releases/latest):
 
 ```bash
-# Linux amd64
+# Linux amd64 (with sudo)
 curl -Lo vault-vim https://github.com/BlackMetalz/vault-vim/releases/latest/download/vault-vim-linux-amd64
 chmod +x vault-vim
 sudo mv vault-vim /usr/local/bin/
+
+# Linux amd64 (without sudo)
+curl -Lo vault-vim https://github.com/BlackMetalz/vault-vim/releases/latest/download/vault-vim-linux-amd64
+chmod +x vault-vim
+mkdir -p ~/.local/bin
+mv vault-vim ~/.local/bin/
 
 # macOS Apple Silicon (M1/M2/M3)
 curl -Lo vault-vim https://github.com/BlackMetalz/vault-vim/releases/latest/download/vault-vim-darwin-arm64
