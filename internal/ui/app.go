@@ -288,7 +288,7 @@ func (m AppModel) View() string {
 	}
 
 	// Version bottom-right
-	ver := lipgloss.NewStyle().Foreground(colorMuted).Render("v" + m.version)
+	ver := lipgloss.NewStyle().Foreground(colorMuted).Render(m.version)
 	verLine := lipgloss.PlaceHorizontal(m.width, lipgloss.Right, ver)
 	return mainView + "\n" + verLine
 }

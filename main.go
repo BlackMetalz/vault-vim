@@ -11,7 +11,7 @@ import (
 	"github.com/BlackMetalz/vault-vim/internal/vault"
 )
 
-var Version = "0.0.1-dev"
+var Version = "v0.0.1-dev"
 
 func main() {
 	cfg, err := config.Load()
