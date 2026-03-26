@@ -138,6 +138,8 @@ func (c *Client) GetSecret(mount, path string) (*Secret, error) {
 }
 
 // PatchSecret updates specific keys without overwriting others.
+// Tries PATCH first. Falls back to read-merge-write (GET + PUT) if PATCH is
+// not permitted (403) or secret doesn't exist yet (404).
 func (c *Client) PatchSecret(mount, path string, updates map[string]string) error {
 	path = strings.TrimSuffix(path, "/")
 	url := fmt.Sprintf("/v1/%sdata/%s", mount, path)
@@ -148,14 +150,34 @@ func (c *Client) PatchSecret(mount, path string, updates map[string]string) erro
 	payloadBytes, _ := json.Marshal(payload)
 
 	_, err := c.requestWithMethod("PATCH", url, payloadBytes, "application/merge-patch+json")
-	if err != nil {
-		// Secret doesn't exist yet — fall back to PUT (create)
-		if strings.Contains(err.Error(), "HTTP 404") {
-			return c.PutSecret(mount, path, updates)
-		}
-		return fmt.Errorf("patch secret %s%s: %w", mount, path, err)
+	if err == nil {
+		return nil
 	}
-	return nil
+
+	// PATCH failed — fall back to read-merge-write
+	errStr := err.Error()
+	if strings.Contains(errStr, "HTTP 403") || strings.Contains(errStr, "HTTP 404") {
+		return c.readMergeWrite(mount, path, updates)
+	}
+	return fmt.Errorf("patch secret %s%s: %w", mount, path, err)
+}
+
+// readMergeWrite reads existing secret, merges updates, and writes back via PUT.
+func (c *Client) readMergeWrite(mount, path string, updates map[string]string) error {
+	existing := make(map[string]string)
+
+	// Try to read existing data (ignore 404 — secret may not exist yet)
+	secret, err := c.GetSecret(mount, path)
+	if err == nil && secret != nil {
+		existing = secret.Data
+	}
+
+	// Merge updates into existing
+	for k, v := range updates {
+		existing[k] = v
+	}
+
+	return c.PutSecret(mount, path, existing)
 }
 
 // PutSecret writes a full secret (used for adding keys - reads first, merges, then writes).
