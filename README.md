@@ -6,6 +6,7 @@ No more accidental:
 - having hard time to remember commands. We are fucking old already (My colleague HieuPN said that xD)
 - overwrites with `vault kv put`.
 
+![vault-vim screenshot](images/1.png)
 
 ## Install
 
