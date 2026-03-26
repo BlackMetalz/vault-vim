@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"encoding/json"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -138,6 +139,10 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.editor = m.editor.startRename(msg.key)
 		return m, nil
 
+	case startImportJSONMsg:
+		m.editor = m.editor.startImportJSON()
+		return m, nil
+
 	case browserDeleteMsg:
 		m.editor = m.editor.startDeletePath(msg.mount, msg.path, msg.isDir)
 		return m, nil
@@ -209,14 +214,13 @@ func (m AppModel) handleEditorDone(msg editorDoneMsg) (tea.Model, tea.Cmd) {
 		}
 	case "newsecret":
 		// msg.key = mount, msg.value = full path
-		// Navigate to secret view and auto-open add key editor
+		// Navigate to empty secret view — user can press a/i/etc
 		mount := msg.key
 		path := msg.value
 		m.current = viewSecret
 		m.secret = newSecretModel(m.client, mount, path)
 		m.secret.width = m.width
 		m.secret.height = m.height
-		m.editor = m.editor.startAdd()
 		return m, m.secret.Init()
 
 	case "newfolder":
@@ -248,6 +252,22 @@ func (m AppModel) handleEditorDone(msg editorDoneMsg) (tea.Model, tea.Cmd) {
 				return secretUpdatedMsg{err: err}
 			}
 			return browserReloadMsg{}
+		}
+	case "import":
+		// msg.key = JSON-encoded map[string]string of parsed keys
+		// Overwrite entire secret (same as vault kv put @file.json)
+		mount := m.secret.mount
+		path := m.secret.path
+		client := m.client
+		var data map[string]string
+		if err := json.Unmarshal([]byte(msg.key), &data); err != nil {
+			return m, func() tea.Msg {
+				return secretUpdatedMsg{err: err}
+			}
+		}
+		return m, func() tea.Msg {
+			err := client.PutSecret(mount, path, data)
+			return secretUpdatedMsg{err: err}
 		}
 	}
 	return m, nil

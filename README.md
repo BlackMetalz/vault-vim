@@ -91,6 +91,8 @@ Test data includes:
 | `up/down`   | Move up/down       |
 | `enter` | Open / drill in    |
 | `n`     | Create new secret  |
+| `N`     | Create new folder  |
+| `ctrl+d`| Delete secret/folder|
 | `esc`   | Go back            |
 | `/`     | Filter items       |
 | `q`     | Quit               |
@@ -102,6 +104,7 @@ Test data includes:
 | `up/down`    | Move up/down       |
 | `e`      | Edit value         |
 | `a`      | Add new key        |
+| `i`      | Import from JSON   |
 | `r`      | Rename key         |
 | `ctrl+d` | Delete key         |
 | `s`      | Reveal/hide value  |
@@ -128,9 +131,12 @@ Full-screen text editor using [bubbles/textarea](https://github.com/charmbracele
 
 - **Browse**: Lists KV v2 mount points, then paths within each mount
 - **View**: Shows all key-value pairs in a table (masked by default)
-- **Edit**: Uses `vault kv patch` — only updates the field you changed, never overwrites other keys
-- **Add key**: Appends a new key to an existing secret via `patch`
+- **Edit**: Uses `PATCH` to update only the field you changed. Falls back to read-merge-write if `patch` capability is not available (403)
+- **Add key**: Appends a new key to an existing secret via `PATCH`
+- **Import JSON**: Paste a JSON object to overwrite all keys (same as `vault kv put @file.json`)
 - **Rename key**: Reads secret, copies value to new key, deletes old key
-- **Delete key**: Reads secret, removes the key, writes back
-- **Create secret**: Creates a new secret path with a placeholder key
+- **Delete key**: Reads secret, removes the key, writes back. Requires typing "Confirm"
+- **Delete secret/folder**: Deletes an entire secret path (recursive for folders). Requires typing "Confirm"
+- **Create secret**: Creates a new empty secret path — add keys with `a` or import with `i`
+- **Create folder**: Navigates into a new folder path — create secrets inside with `n`
 - **Auth**: Reads `VAULT_TOKEN` env var or `~/.vault-token` (written by `vault login`)

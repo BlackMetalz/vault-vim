@@ -72,6 +72,7 @@ var browserHelp = []helpBinding{
 var secretHelp = []helpBinding{
 	{"e", "edit value"},
 	{"a", "add key"},
+	{"i", "import JSON"},
 	{"r", "rename key"},
 	{"ctrl+d", "delete key"},
 	{"s", "reveal/hide"},
@@ -111,28 +112,24 @@ func renderHelpModal(current view, width int) string {
 	}, modalW-4))
 
 	// Context-specific
-	switch current {
-	case viewMounts:
-		sections = append(sections, renderHelpSection("Mounts", []helpBinding{
-			{"enter", "Select mount"},
-		}, modalW-4))
-	case viewBrowser:
-		sections = append(sections, renderHelpSection("Browser", []helpBinding{
-			{"enter", "Open path / secret"},
-			{"n", "Create new secret"},
-			{"N", "Create new folder"},
-			{"ctrl+d", "Delete secret / folder"},
-		}, modalW-4))
-	case viewSecret:
-		sections = append(sections, renderHelpSection("Secret View", []helpBinding{
-			{"e", "Edit selected value"},
-			{"a", "Add new key"},
-			{"r", "Rename key"},
-			{"ctrl+d", "Delete key"},
-			{"s", "Reveal/hide selected"},
-			{"S", "Reveal/hide all"},
-		}, modalW-4))
-	}
+	_ = current // show all sections regardless of current view
+
+	sections = append(sections, renderHelpSection("Browser", []helpBinding{
+		{"enter", "Open path / secret"},
+		{"n", "Create new secret"},
+		{"N", "Create new folder"},
+		{"ctrl+d", "Delete secret / folder"},
+	}, modalW-4))
+
+	sections = append(sections, renderHelpSection("Secret View", []helpBinding{
+		{"e", "Edit selected value"},
+		{"a", "Add new key"},
+		{"i", "Import from JSON (overwrite)"},
+		{"r", "Rename key"},
+		{"ctrl+d", "Delete key"},
+		{"s", "Reveal/hide selected"},
+		{"S", "Reveal/hide all"},
+	}, modalW-4))
 
 	// Editor
 	sections = append(sections, renderHelpSection("Editor", []helpBinding{

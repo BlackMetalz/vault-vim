@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textarea"
@@ -20,6 +21,7 @@ const (
 	editorRenameKey
 	editorNewSecretName
 	editorNewFolderName
+	editorImportJSON
 )
 
 type editorOverlay struct {
@@ -148,6 +150,16 @@ func (e editorOverlay) startNewFolder(mount, basePath string) editorOverlay {
 	return e
 }
 
+func (e editorOverlay) startImportJSON() editorOverlay {
+	e.active = true
+	e.state = editorImportJSON
+	e.textarea.SetValue("")
+	e.textarea.Placeholder = "Paste JSON here..."
+	e.textarea.Focus()
+	e.resizeTextarea()
+	return e
+}
+
 func (e *editorOverlay) resizeTextarea() {
 	w := e.width - 8
 	if w < 30 {
@@ -174,6 +186,8 @@ func (e editorOverlay) Update(msg tea.KeyMsg) (editorOverlay, tea.Cmd) {
 		return e.updateNewSecretName(msg)
 	case editorNewFolderName:
 		return e.updateNewFolderName(msg)
+	case editorImportJSON:
+		return e.updateImportJSON(msg)
 	default:
 		return e.updateTextarea(msg)
 	}
@@ -182,7 +196,7 @@ func (e editorOverlay) Update(msg tea.KeyMsg) (editorOverlay, tea.Cmd) {
 func (e editorOverlay) UpdateMsg(msg tea.Msg) (editorOverlay, tea.Cmd) {
 	// For non-key messages (like paste), route to textarea
 	switch e.state {
-	case editorEditValue, editorAddKeyValue:
+	case editorEditValue, editorAddKeyValue, editorImportJSON:
 		var cmd tea.Cmd
 		e.textarea, cmd = e.textarea.Update(msg)
 		return e, cmd
@@ -379,6 +393,60 @@ func (e editorOverlay) updateTextarea(msg tea.KeyMsg) (editorOverlay, tea.Cmd) {
 	}
 }
 
+func (e editorOverlay) updateImportJSON(msg tea.KeyMsg) (editorOverlay, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		e.active = false
+		e.textarea.Blur()
+		return e, func() tea.Msg {
+			return editorDoneMsg{action: "cancel"}
+		}
+	case "ctrl+s", "f2":
+		raw := e.textarea.Value()
+		if strings.TrimSpace(raw) == "" {
+			return e, nil
+		}
+
+		// Parse JSON
+		var parsed map[string]interface{}
+		if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
+			// Invalid JSON — set error in status, stay in editor
+			e.key = "Invalid JSON: " + err.Error()
+			return e, nil
+		}
+
+		// Convert all values to strings
+		result := make(map[string]string)
+		for k, v := range parsed {
+			switch val := v.(type) {
+			case string:
+				result[k] = val
+			default:
+				// Numbers, bools, objects, arrays → JSON string
+				b, _ := json.Marshal(val)
+				result[k] = string(b)
+			}
+		}
+
+		e.active = false
+		e.textarea.Blur()
+		return e, func() tea.Msg {
+			return editorDoneMsg{action: "import", value: raw, key: jsonMapToString(result)}
+		}
+	default:
+		var cmd tea.Cmd
+		e.textarea, cmd = e.textarea.Update(msg)
+		return e, cmd
+	}
+}
+
+// jsonMapToString serializes a map for passing through editorDoneMsg.
+// We use JSON encoding since editorDoneMsg only has key/value string fields.
+func jsonMapToString(m map[string]string) string {
+	b, _ := json.Marshal(m)
+	return string(b)
+}
+
 func splitLines(s string) []string {
 	if s == "" {
 		return []string{""}
@@ -438,6 +506,15 @@ func (e editorOverlay) View() string {
 		header = keyStyle.Render("Path: ") + helpKeyStyle.Render(e.newSecMount+e.newSecPath) + "\n" +
 			keyStyle.Render("Folder name:")
 		content = e.input.View()
+
+	case editorImportJSON:
+		title = " IMPORT JSON "
+		header = keyStyle.Render("Paste JSON object — keys become secret keys")
+		if e.key != "" {
+			// e.key is used for error messages
+			header += "\n\n" + errorStyle.Render(e.key)
+		}
+		content = e.textarea.View()
 
 	case editorConfirmDelete:
 		title = " DELETE KEY "

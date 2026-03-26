@@ -165,6 +165,10 @@ func (m secretModel) updateNormal(msg tea.KeyMsg) (secretModel, tea.Cmd) {
 		return m, func() tea.Msg {
 			return startAddMsg{}
 		}
+	case "i":
+		return m, func() tea.Msg {
+			return startImportJSONMsg{}
+		}
 	case "r":
 		// Rename key
 		if len(m.keys) > 0 {
@@ -282,6 +286,8 @@ func (m secretModel) View() string {
 
 	if len(m.keys) == 0 {
 		b.WriteString("  " + itemStyle.Render("(no keys)") + "\n")
+		b.WriteString("\n" + helpDescStyle.Render("  Press 'a' to add a key or 'i' to import JSON") + "\n")
+		b.WriteString(errorStyle.Render("  Warning: empty secrets are not saved in Vault") + "\n")
 	}
 
 	// Status message
@@ -339,3 +345,5 @@ type startDeleteMsg struct {
 type startRenameMsg struct {
 	key string
 }
+
+type startImportJSONMsg struct{}

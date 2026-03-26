@@ -32,8 +32,9 @@ make test
 
 1. Add the method to `internal/vault/client.go`
 2. Use `PATCH` for partial updates, `POST` for full writes
-3. For composite operations (delete key, rename key), always read-then-write
-4. Handle the API call in `app.go`'s `handleEditorDone()` as an async `tea.Cmd`
+3. `PatchSecret` auto-falls back to read-merge-write on 403/404
+4. For composite operations (delete key, rename key), always read-then-write
+5. Handle the API call in `app.go`'s `handleEditorDone()` as an async `tea.Cmd`
 
 ### Adding a new editor state
 

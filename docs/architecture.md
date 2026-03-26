@@ -91,15 +91,18 @@ Token resolution order (in `internal/config/config.go`):
 | List secrets | `LIST`   | `/v1/{mount}metadata/{path}`      | Returns keys and directories   |
 | Get secret   | `GET`    | `/v1/{mount}data/{path}`          | Returns KV pairs + metadata    |
 | Patch secret | `PATCH`  | `/v1/{mount}data/{path}`          | Merge-patch, no overwrite      |
-| Put secret   | `POST`   | `/v1/{mount}data/{path}`          | Full write (used for delete/rename) |
+| Put secret   | `POST`   | `/v1/{mount}data/{path}`          | Full write (used for delete/rename/import) |
 | Delete key   | —        | Read → remove key → Put           | No native single-key delete    |
 | Rename key   | —        | Read → add new → remove old → Put | No native rename               |
+| Delete secret| `DELETE` | `/v1/{mount}metadata/{path}`      | Recursive for folders          |
+| Import JSON  | `POST`   | `/v1/{mount}data/{path}`          | Overwrites all keys (like `vault kv put @file.json`) |
 
 ### Key Design Decision: Patch vs Put
 
 The core problem vault-vim solves: `vault kv put` overwrites ALL keys. If you have 10 keys and `put` with 1 key, the other 9 are gone.
 
-- **Edit value**: Uses `PATCH` with `Content-Type: application/merge-patch+json` — only updates the specified key, leaves others untouched
+- **Edit value**: Uses `PATCH` with `Content-Type: application/merge-patch+json` — only updates the specified key, leaves others untouched. Falls back to read-merge-write (GET + PUT) if the Vault policy lacks `patch` capability (HTTP 403) or the secret doesn't exist yet (HTTP 404)
+- **Import JSON**: Uses `PUT` — intentionally overwrites all keys, matching `vault kv put @file.json` behavior
 - **Delete key**: Must use read-modify-write because Vault has no single-key delete API
 - **Rename key**: Same read-modify-write pattern — copy value to new key name, delete old
 
@@ -111,12 +114,15 @@ The editor (`editor.go`) uses `charmbracelet/bubbles/textarea` for multiline tex
 
 | State                | Input Type | Used For                    |
 |----------------------|------------|-----------------------------|
-| `editorEditValue`    | textarea   | Editing an existing value   |
-| `editorAddKeyName`   | textinput  | Typing new key name         |
-| `editorAddKeyValue`  | textarea   | Typing new key value        |
-| `editorConfirmDelete`| y/n prompt | Confirming key deletion     |
-| `editorRenameKey`    | textinput  | Typing new key name         |
-| `editorNewSecretName`| textinput  | Typing new secret path name |
+| `editorEditValue`      | textarea   | Editing an existing value        |
+| `editorAddKeyName`     | textinput  | Typing new key name              |
+| `editorAddKeyValue`    | textarea   | Typing new key value             |
+| `editorConfirmDelete`  | textinput  | Type "Confirm" to delete key     |
+| `editorConfirmDeletePath`| textinput | Type "Confirm" to delete secret |
+| `editorRenameKey`      | textinput  | Typing new key name              |
+| `editorNewSecretName`  | textinput  | Typing new secret path name      |
+| `editorNewFolderName`  | textinput  | Typing new folder name           |
+| `editorImportJSON`     | textarea   | Paste JSON to import keys        |
 
 ## Styling
 

@@ -100,6 +100,8 @@ Content-Type: application/merge-patch+json
 
 This ONLY updates `db_host`. All other keys remain unchanged. This is the key operation that makes vault-vim safe — it never overwrites keys you didn't touch.
 
+**Fallback**: If PATCH returns 403 (policy lacks `patch` capability) or 404 (secret doesn't exist), vault-vim falls back to read-merge-write: GET existing data → merge updates → PUT.
+
 ### Put Secret (Full Write)
 
 ```
@@ -115,9 +117,10 @@ Content-Type: application/json
 ```
 
 This REPLACES all keys. Used internally for:
+- **Import JSON**: Overwrite all keys with parsed JSON (same as `vault kv put @file.json`)
 - **Delete key**: Read all keys → remove one → write back
 - **Rename key**: Read all keys → add new name → remove old name → write back
-- **Create secret**: Write initial key-value pairs
+- **PATCH fallback**: When PATCH returns 403/404, read-merge-write uses PUT
 
 ### Delete Key (Composite Operation)
 
@@ -135,6 +138,23 @@ No native Vault API for renaming a key. vault-vim does:
 2. Copy value from old key to new key name
 3. Delete old key from the map
 4. `POST /v1/{mount}data/{path}` — write back
+
+### Import JSON
+
+Parses a JSON object and writes all key-value pairs as the secret. This is a full overwrite using PUT, matching `vault kv put secret/path @file.json` behavior.
+
+1. User pastes JSON into editor (press `i` in secret view)
+2. Parse JSON — top-level keys become secret keys
+3. String values stored as-is, non-string values (numbers, bools, objects) serialized as JSON strings
+4. `POST /v1/{mount}data/{path}` — write all parsed keys (overwrites existing)
+
+### Delete Secret/Folder
+
+```
+DELETE /v1/{mount}metadata/{path}
+```
+
+For folders, vault-vim recursively lists all secrets under the path and deletes each one.
 
 ## Required Vault Policies
 
